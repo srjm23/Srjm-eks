@@ -1,0 +1,76 @@
+variable "aws_region" {
+  type    = string
+  default = "us-east-2"
+}
+
+variable "cluster_name" {
+  type    = string
+  default = "eks-srjm"
+}
+
+variable "environment" {
+  type    = string
+  default = "lab"
+}
+
+variable "kubernetes_version" {
+  type    = string
+  default = "1.35"
+}
+
+variable "vpc_cidr" {
+  type    = string
+  default = "10.0.0.0/16"
+}
+
+variable "availability_zones" {
+  type = list(string)
+
+  default = [
+    "us-east-2a",
+    "us-east-2b",
+  ]
+}
+
+variable "public_subnets" {
+  type = list(string)
+
+  default = [
+    "10.0.0.0/24",
+    "10.0.1.0/24"
+  ]
+}
+
+variable "private_subnets" {
+  type = list(string)
+
+  default = [
+    "10.0.10.0/24",
+    "10.0.11.0/24",
+  ]
+}
+
+variable "node_instance_type" {
+  type    = string
+  default = "c7i-flex.large"
+}
+
+variable "desired_nodes" {
+  type    = number
+  default = 2
+}
+
+variable "min_nodes" {
+  type    = number
+  default = 2
+}
+
+variable "max_nodes" {
+  type    = number
+  default = 3
+}
+
+variable "name_s3_backend" {
+  type    = string
+  default = "eks-sjrm-tfstate"
+}

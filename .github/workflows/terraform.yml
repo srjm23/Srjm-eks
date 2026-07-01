@@ -1,0 +1,120 @@
+name: Terraform DevSecOps Deploy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Instalar Checkov
+        run: pip install checkov
+
+      - name: Verificar formatação Terraform
+        run: terraform fmt -check -recursive
+
+      - name: Varredura DevSecOps com Checkov
+        run: checkov -d . --framework terraform
+
+      - name: Inicializar Terraform com backend S3
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Validar Terraform
+        run: terraform validate
+
+      - name: Executar Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Exibir plano na tela
+        run: terraform show -no-color tfplan
+
+      - name: Salvar plano
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan
+
+  terraform-apply:
+    name: Terraform Apply Manual
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+
+    if: github.ref == 'refs/heads/main' 
+
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Baixar plano aprovado
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+
+      - name: Verificar acesso ao bucket S3
+        run: aws s3 ls s3://${{ vars.TF_STATE_BUCKET }}
+
+      - name: Verificar tabela de lock do Terraform
+        run: |
+          aws dynamodb describe-table \
+            --table-name ${{ vars.TF_LOCK_TABLE }} \
+            --region ${{ vars.AWS_REGION }}
+
+      - name: Inicializar Terraform com backend S3
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Aplicar Terraform
+        run: terraform apply -input=false tfplan
