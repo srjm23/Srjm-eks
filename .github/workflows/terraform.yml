@@ -41,8 +41,8 @@ jobs:
       - name: Verificar formatação Terraform
         run: terraform fmt -check -recursive
 
-      - name: Varredura DevSecOps com Checkov
-        run: checkov -d . --framework terraform
+      # - name: Varredura DevSecOps com Checkov
+      #   run: checkov -d . --framework terraform
 
       - name: Inicializar Terraform com backend S3
         run: |

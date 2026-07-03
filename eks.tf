@@ -4,6 +4,14 @@ resource "aws_eks_cluster" "srjm-eks" {
   version  = var.kubernetes_version
   role_arn = aws_iam_role.eks_cluster.arn
 
+  enabled_cluster_log_types = [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ]
+
   vpc_config {
 
     subnet_ids = [
@@ -37,23 +45,6 @@ resource "aws_eks_cluster" "srjm-eks" {
   tags = local.common_tags
 
 }
-
-# resource "aws_launch_template" "eks_workers-ebs" {
-
-#   name_prefix = "eks-"
-
-#   block_device_mappings {
-
-#     device_name = "/dev/xvda"
-
-#     ebs {
-#       volume_size = 5
-#       volume_type = "gp3"
-#       encrypted   = true
-#       delete_on_termination = true
-#     }
-#   }
-# }
 
 resource "aws_eks_node_group" "workers" {
 
@@ -103,13 +94,6 @@ resource "aws_eks_node_group" "workers" {
     aws_iam_role_policy_attachment.ecr
 
   ]
-
-
-  # launch_template {
-  #   id      = aws_launch_template.eks_workers-ebs.id
-  #   version = aws_launch_template.eks_workers-ebs.latest_version
-  # }  
-
 
   tags = local.common_tags
 
