@@ -14,6 +14,7 @@ permissions:
 
 env:
   TF_IN_AUTOMATION: "true"
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'eks-srjm' }}
 
 jobs:
   terraform-plan:
@@ -41,8 +42,8 @@ jobs:
       - name: Verificar formatação Terraform
         run: terraform fmt -check -recursive
 
-      # - name: Varredura DevSecOps com Checkov
-      #   run: checkov -d . --framework terraform
+      - name: Varredura DevSecOps com Checkov
+        run: checkov -d . --framework terraform
 
       - name: Inicializar Terraform com backend S3
         run: |
@@ -118,3 +119,4 @@ jobs:
 
       - name: Aplicar Terraform
         run: terraform apply -input=false tfplan
+
