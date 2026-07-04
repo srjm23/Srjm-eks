@@ -1,5 +1,5 @@
 resource "aws_eks_cluster" "srjm-eks" {
-
+  #checkov:skip=CKV_AWS_39:Endpoint público necessário para administração, restrito ao meu IP
   name     = var.cluster_name
   version  = var.kubernetes_version
   role_arn = aws_iam_role.eks_cluster.arn
@@ -11,6 +11,14 @@ resource "aws_eks_cluster" "srjm-eks" {
     "controllerManager",
     "scheduler"
   ]
+
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.eks_secrets.arn
+    }
+
+    resources = ["secrets"]
+  }
 
   vpc_config {
 
@@ -28,22 +36,37 @@ resource "aws_eks_cluster" "srjm-eks" {
 
     endpoint_public_access = true
 
-    security_group_ids = [
-
-      aws_security_group.eks_cluster.id
-
-    ]
+    public_access_cidrs = [var.eks_public_access_cidr]
 
   }
 
   depends_on = [
 
-    aws_iam_role_policy_attachment.cluster_policy
+    aws_iam_role_policy_attachment.cluster_policy,
+    aws_kms_key_policy.eks_secrets
 
   ]
 
   tags = local.common_tags
 
+}
+
+resource "aws_kms_key" "eks_secrets" {
+  description             = "KMS key for ${var.cluster_name} Kubernetes secrets"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+
+  tags = local.common_tags
+}
+
+resource "aws_kms_key_policy" "eks_secrets" {
+  key_id = aws_kms_key.eks_secrets.id
+  policy = data.aws_iam_policy_document.eks_kms.json
+}
+
+resource "aws_kms_alias" "eks_secrets" {
+  name          = "alias/${var.cluster_name}-secrets"
+  target_key_id = aws_kms_key.eks_secrets.key_id
 }
 
 resource "aws_eks_node_group" "workers" {

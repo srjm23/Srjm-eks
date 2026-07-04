@@ -8,6 +8,16 @@ variable "cluster_name" {
   default = "eks-srjm"
 }
 
+variable "eks_public_access_cidr" {
+  type      = string
+  sensitive = true
+
+  validation {
+    condition     = can(cidrhost(var.eks_public_access_cidr, 0))
+    error_message = "eks_public_access_cidr deve ser um CIDR válido."
+  }
+}
+
 variable "environment" {
   type    = string
   default = "lab"

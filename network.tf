@@ -20,7 +20,7 @@ resource "aws_subnet" "public_a" {
 
   availability_zone = var.availability_zones[0]
 
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = {
 
@@ -42,7 +42,7 @@ resource "aws_subnet" "public_b" {
 
   availability_zone = var.availability_zones[1]
 
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = {
 
@@ -200,4 +200,69 @@ resource "aws_route_table_association" "private_b" {
 
   route_table_id = aws_route_table.private.id
 
+}
+
+resource "aws_default_security_group" "eks" {
+  vpc_id = aws_vpc.eks.id
+
+  tags = {
+    Name = "${var.cluster_name}-default-deny-all"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  name              = "/aws/vpc-flow-log/${var.cluster_name}"
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.eks_secrets.arn
+
+  tags = local.common_tags
+
+  depends_on = [aws_kms_key_policy.eks_secrets]
+}
+
+resource "aws_iam_role" "vpc_flow_logs" {
+  name = "${var.cluster_name}-vpc-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "vpc-flow-logs.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs" {
+  name = "${var.cluster_name}-vpc-flow-logs-policy"
+  role = aws_iam_role.vpc_flow_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = "${aws_cloudwatch_log_group.vpc_flow_logs.arn}:*"
+    }]
+  })
+}
+
+resource "aws_flow_log" "eks" {
+  vpc_id                   = aws_vpc.eks.id
+  traffic_type             = "ALL"
+  log_destination_type     = "cloud-watch-logs"
+  log_destination          = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  iam_role_arn             = aws_iam_role.vpc_flow_logs.arn
+  max_aggregation_interval = 60
+
+  tags = local.common_tags
 }

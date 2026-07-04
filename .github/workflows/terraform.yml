@@ -14,6 +14,7 @@ permissions:
 
 env:
   TF_IN_AUTOMATION: "true"
+  TF_VAR_eks_public_access_cidr: ${{ secrets.EKS_PUBLIC_ACCESS_CIDR }}
   EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'eks-srjm' }}
 
 jobs:
@@ -119,4 +120,3 @@ jobs:
 
       - name: Aplicar Terraform
         run: terraform apply -input=false tfplan
-
