@@ -12,6 +12,10 @@ permissions:
   id-token: write
   pull-requests: write
 
+concurrency:
+  group: terraform-production
+  cancel-in-progress: false
+
 env:
   TF_IN_AUTOMATION: "true"
   TF_VAR_eks_public_access_cidr: ${{ secrets.EKS_PUBLIC_ACCESS_CIDR }}

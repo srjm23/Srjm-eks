@@ -160,13 +160,23 @@ resource "aws_eks_addon" "kube_proxy" {
 
 resource "aws_eks_addon" "ebs_csi" {
 
-  cluster_name  = aws_eks_cluster.srjm-eks.name
-  addon_version = data.aws_eks_addon_version.ebs_csi.version
-  addon_name    = "aws-ebs-csi-driver"
+  cluster_name             = aws_eks_cluster.srjm-eks.name
+  addon_version            = data.aws_eks_addon_version.ebs_csi.version
+  addon_name               = "aws-ebs-csi-driver"
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "PRESERVE"
+
+  timeouts {
+    create = "30m"
+    update = "30m"
+  }
 
   depends_on = [
     aws_eks_node_group.workers,
-    aws_iam_role_policy_attachment.ebs_csi
+    aws_iam_role_policy_attachment.ebs_csi,
+    aws_iam_openid_connect_provider.eks
   ]
 
 }
