@@ -95,7 +95,7 @@ jobs:
           path: tfplan
 
   terraform-execute:
-    name: Terraform ${{ inputs.operation }} Manual
+    name: Terraform Apply ou Destroy Manual
     runs-on: ubuntu-latest
     needs: terraform-plan
 
