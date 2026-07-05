@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "Digite APPLY para criar/alterar ou DESTROY para destruir"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -62,8 +67,23 @@ jobs:
       - name: Validar Terraform
         run: terraform validate
 
+      - name: Validar operação manual
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TERRAFORM_OPERATION: ${{ inputs.operation }}
+        run: |
+          if [[ "$TERRAFORM_OPERATION" != "APPLY" && "$TERRAFORM_OPERATION" != "DESTROY" ]]; then
+            echo "Operação inválida. Digite exatamente APPLY ou DESTROY."
+            exit 1
+          fi
+
       - name: Executar Terraform Plan
+        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'APPLY'
         run: terraform plan -input=false -out=tfplan
+
+      - name: Executar Terraform Destroy Plan
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'DESTROY'
+        run: terraform plan -destroy -input=false -out=tfplan
 
       - name: Exibir plano na tela
         run: terraform show -no-color tfplan
@@ -74,12 +94,15 @@ jobs:
           name: tfplan
           path: tfplan
 
-  terraform-apply:
-    name: Terraform Apply Manual
+  terraform-execute:
+    name: Terraform ${{ inputs.operation }} Manual
     runs-on: ubuntu-latest
     needs: terraform-plan
 
-    if: github.ref == 'refs/heads/main' 
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      (inputs.operation == 'APPLY' || inputs.operation == 'DESTROY')
 
     environment:
       name: production
@@ -122,5 +145,5 @@ jobs:
             -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
-      - name: Aplicar Terraform
+      - name: Executar Terraform ${{ inputs.operation }}
         run: terraform apply -input=false tfplan
