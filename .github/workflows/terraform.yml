@@ -7,10 +7,13 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      operation:
-        description: "Digite APPLY para criar/alterar ou DESTROY para destruir"
+      action:
+        description: "Selecione uma ação para executar na Infraestrutura Terraform"
         required: true
-        type: string
+        type: choice
+        options:
+          - apply
+          - destroy
 
 permissions:
   contents: read
@@ -56,34 +59,13 @@ jobs:
         run: checkov -d . --framework terraform
 
       - name: Inicializar Terraform com backend S3
-        run: |
-          terraform init -input=false \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
-            -backend-config="region=${{ vars.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
-            -backend-config="encrypt=true"
+        run: terraform init -input=false
 
       - name: Validar Terraform
         run: terraform validate
 
-      - name: Validar operação manual
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          TERRAFORM_OPERATION: ${{ inputs.operation }}
-        run: |
-          if [[ "$TERRAFORM_OPERATION" != "APPLY" && "$TERRAFORM_OPERATION" != "DESTROY" ]]; then
-            echo "Operação inválida. Digite exatamente APPLY ou DESTROY."
-            exit 1
-          fi
-
       - name: Executar Terraform Plan
-        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'APPLY'
         run: terraform plan -input=false -out=tfplan
-
-      - name: Executar Terraform Destroy Plan
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'DESTROY'
-        run: terraform plan -destroy -input=false -out=tfplan
 
       - name: Exibir plano na tela
         run: terraform show -no-color tfplan
@@ -94,15 +76,11 @@ jobs:
           name: tfplan
           path: tfplan
 
-  terraform-execute:
-    name: Terraform Apply ou Destroy Manual
+  terraform-actions:
+    name: Terraform Apply or Destroy
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && (github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy')
     needs: terraform-plan
-
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/main' &&
-      (inputs.operation == 'APPLY' || inputs.operation == 'DESTROY')
 
     environment:
       name: production
@@ -127,23 +105,25 @@ jobs:
         with:
           name: tfplan
 
-      - name: Verificar acesso ao bucket S3
-        run: aws s3 ls s3://${{ vars.TF_STATE_BUCKET }}
-
-      - name: Verificar tabela de lock do Terraform
-        run: |
-          aws dynamodb describe-table \
-            --table-name ${{ vars.TF_LOCK_TABLE }} \
-            --region ${{ vars.AWS_REGION }}
-
       - name: Inicializar Terraform com backend S3
-        run: |
-          terraform init -input=false \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
-            -backend-config="region=${{ vars.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
-            -backend-config="encrypt=true"
+        run: terraform init -input=false
 
-      - name: Executar Terraform ${{ inputs.operation }}
-        run: terraform apply -input=false tfplan
+      - name: Exibir plano de aplicação
+        if: github.event.inputs.action == 'apply'
+        run: terraform show -no-color tfplan
+
+      - name: Aplicar infraestrutura
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Gerar plano de destruição
+        if: github.event.inputs.action == 'destroy'
+        run: terraform plan -destroy -input=false -out=destroy.tfplan
+
+      - name: Exibir plano de destruição
+        if: github.event.inputs.action == 'destroy'
+        run: terraform show -no-color destroy.tfplan
+
+      - name: Destruir infraestrutura
+        if: github.event.inputs.action == 'destroy'
+        run: terraform apply -input=false -auto-approve destroy.tfplan
