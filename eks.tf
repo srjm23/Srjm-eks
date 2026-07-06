@@ -65,7 +65,7 @@ resource "aws_kms_key_policy" "eks_secrets" {
 }
 
 resource "aws_kms_alias" "eks_secrets" {
-  name          = "alias/${var.cluster_name}-secrets"
+  name          = "alias/${var.cluster_name}-secrets-new"
   target_key_id = aws_kms_key.eks_secrets.key_id
 }
 
