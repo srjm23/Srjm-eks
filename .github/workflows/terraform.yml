@@ -24,11 +24,6 @@ concurrency:
   group: terraform-production
   cancel-in-progress: false
 
-env:
-  TF_IN_AUTOMATION: "true"
-  TF_VAR_eks_public_access_cidr: ${{ secrets.EKS_PUBLIC_ACCESS_CIDR }}
-  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'eks-srjm' }}
-
 jobs:
   terraform-plan:
     name: Terraform Plan
@@ -66,9 +61,6 @@ jobs:
 
       - name: Executar Terraform Plan
         run: terraform plan -input=false -out=tfplan
-
-      - name: Exibir plano na tela
-        run: terraform show -no-color tfplan
 
       - name: Salvar plano
         uses: actions/upload-artifact@v7
@@ -119,10 +111,6 @@ jobs:
       - name: Gerar plano de destruição
         if: github.event.inputs.action == 'destroy'
         run: terraform plan -destroy -input=false -out=destroy.tfplan
-
-      - name: Exibir plano de destruição
-        if: github.event.inputs.action == 'destroy'
-        run: terraform show -no-color destroy.tfplan
 
       - name: Destruir infraestrutura
         if: github.event.inputs.action == 'destroy'

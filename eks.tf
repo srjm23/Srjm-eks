@@ -1,5 +1,5 @@
 resource "aws_eks_cluster" "srjm-eks" {
-  #checkov:skip=CKV_AWS_39:Endpoint público necessário para administração, restrito ao meu IP
+  #checkov:skip=CKV_AWS_39:Endpoint público necessário para administração
   name     = var.cluster_name
   version  = var.kubernetes_version
   role_arn = aws_iam_role.eks_cluster.arn
@@ -35,8 +35,6 @@ resource "aws_eks_cluster" "srjm-eks" {
     endpoint_private_access = true
 
     endpoint_public_access = true
-
-    public_access_cidrs = [var.eks_public_access_cidr]
 
   }
 
