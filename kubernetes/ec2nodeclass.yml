@@ -3,18 +3,20 @@ kind: EC2NodeClass
 metadata:
   name: default
 spec:
-  amiFamily: AL2
+  amiFamily: AL2023
 
-  role: KarpenterNodeRole
+  amiSelectorTerms:
+    - alias: al2023@latest
+
+  instanceProfile: KarpenterNodeInstanceProfile
 
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "true"
+        karpenter.sh/discovery: eks-srjm
 
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: "true"
+        karpenter.sh/discovery: eks-srjm
 
   tags:
     Name: karpenter-node
-    karpenter.sh/discovery: "true"

@@ -105,5 +105,11 @@ data "aws_iam_policy_document" "karpenter_assume" {
         "system:serviceaccount:karpenter:karpenter"
       ]
     }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
   }
 }

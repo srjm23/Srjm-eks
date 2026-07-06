@@ -72,6 +72,8 @@ resource "aws_subnet" "private_a" {
 
     "kubernetes.io/role/internal-elb" = "1"
 
+    "karpenter.sh/discovery" = var.cluster_name
+
   }
 
 }
@@ -92,6 +94,8 @@ resource "aws_subnet" "private_b" {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
 
     "kubernetes.io/role/internal-elb" = "1"
+
+    "karpenter.sh/discovery" = var.cluster_name
 
   }
 
@@ -208,6 +212,12 @@ resource "aws_default_security_group" "eks" {
   tags = {
     Name = "${var.cluster_name}-default-deny-all"
   }
+}
+
+resource "aws_ec2_tag" "karpenter_cluster_security_group" {
+  resource_id = aws_eks_cluster.srjm-eks.vpc_config[0].cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = var.cluster_name
 }
 
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {

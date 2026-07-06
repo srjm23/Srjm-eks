@@ -20,6 +20,11 @@ resource "aws_eks_cluster" "srjm-eks" {
     resources = ["secrets"]
   }
 
+  access_config {
+    authentication_mode                         = "API_AND_CONFIG_MAP"
+    bootstrap_cluster_creator_admin_permissions = true
+  }
+
   vpc_config {
 
     subnet_ids = [

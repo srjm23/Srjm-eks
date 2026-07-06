@@ -1,45 +1,46 @@
-# EKS com Terraform
+# Amazon EKS com Terraform
 
-Infraestrutura como código para provisionar um cluster Amazon EKS na AWS, com
-rede VPC, grupos de nós, IAM, add-ons do cluster e Karpenter.
+Este projeto cria um cluster Amazon EKS na AWS usando Terraform e GitHub Actions.
 
-## Pré-requisitos
+## Infraestrutura
 
-- Terraform 1.8 ou superior
-- AWS CLI autenticada
-- Bucket S3 e tabela DynamoDB previamente criados para o estado remoto
-- Uma role IAM com OIDC para execução pelo GitHub Actions
+- VPC `10.0.0.0/16` em duas zonas de disponibilidade.
+- Duas sub-redes públicas e duas privadas.
+- Internet Gateway, NAT Gateway e tabelas de rotas.
+- Cluster EKS `eks-srjm` com endpoint privado e acesso público restrito por CIDR.
+- Managed Node Group privado com instâncias Spot `c7i-flex.large`.
+- Escala padrão de 2 a 3 nós.
+- Add-ons VPC CNI, CoreDNS, kube-proxy e EBS CSI Driver.
+- Criptografia de secrets com AWS KMS.
+- Logs do EKS e VPC Flow Logs no CloudWatch.
+- Roles IAM e provedor OIDC para acesso seguro aos serviços AWS.
 
-## Execução local
+- Karpenter e seus CRDs instalados por Helm, com IAM e descoberta de rede configurados pelo Terraform.
 
-```bash
-terraform init
-terraform fmt -check -recursive
-terraform validate
-terraform plan
-terraform apply
-```
+## GitHub Actions
 
-Os principais valores podem ser alterados em `variables.tf`, incluindo região,
-nome do cluster, versão do Kubernetes, redes e capacidade dos nós.
+O workflow valida e provisiona a infraestrutura:
 
-## Pipeline
+1. Verifica a formatação do Terraform.
+2. Executa análise de segurança com Checkov.
+3. Executa `terraform init`, `validate` e `plan`.
+4. Em execução manual, permite escolher `apply` ou `destroy`.
 
-O workflow `.github/workflows/terraform.yml` executa:
+A autenticação na AWS utiliza GitHub OIDC, sem chaves de acesso permanentes.
 
-1. verificação de formatação e análise de segurança com Checkov;
-2. validação e geração do `terraform plan`;
-3. armazenamento do plano como artefato;
-4. `terraform apply` somente após aprovação no environment `production`.
+## Configuração necessária
 
-Configure no GitHub o secret `AWS_ROLE_ARN` e as seguintes variables:
+Configure no GitHub:
 
-| Variável | Descrição |
-| --- | --- |
-| `AWS_REGION` | Região AWS, por exemplo `us-east-2` |
-| `TF_STATE_BUCKET` | Bucket S3 usado pelo estado remoto |
-| `TF_STATE_KEY` | Caminho do state, por exemplo `eks/terraform.tfstate` |
-| `TF_LOCK_TABLE` | Tabela DynamoDB usada para locking |
+- Secret `AWS_ROLE_ARN`: role AWS usada pelo GitHub Actions.
+- Secret `EKS_PUBLIC_ACCESS_CIDR`: CIDR autorizado no endpoint público do EKS.
+- Variable `AWS_REGION`: região AWS, por padrão `us-east-2`.
 
-Em **Settings > Environments > production**, configure os revisores obrigatórios
-para impedir o apply sem aprovação.
+O state é armazenado de forma criptografada no bucket S3 `eks-sjrm-tfstate`, que deve existir antes da execução da pipeline.
+
+## Provisionamento
+
+Em **Actions > Terraform DevSecOps Deploy > Run workflow**, selecione:
+
+- `apply` para criar ou atualizar a infraestrutura.
+- `destroy` para remover os recursos gerenciados pelo Terraform.
