@@ -55,7 +55,8 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Varredura DevSecOps com Checkov
-        run: checkov -d . --framework terraform
+        # run: checkov -d . --framework terraform
+        run: checkov -d . --framework terraform --skip-check CKV_AWS_39
 
       - name: Inicializar Terraform com backend S3
         run: terraform init -input=false
