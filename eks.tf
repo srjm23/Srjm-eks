@@ -58,7 +58,7 @@ resource "aws_eks_cluster" "srjm-eks" {
 
 resource "aws_kms_key" "eks_secrets" {
   description             = "KMS key for ${var.cluster_name} Kubernetes secrets"
-  deletion_window_in_days = 1
+  deletion_window_in_days = 7
   enable_key_rotation     = true
 
   tags = local.common_tags
