@@ -222,7 +222,7 @@ resource "aws_ec2_tag" "karpenter_cluster_security_group" {
 
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "/aws/vpc-flow-log/${var.cluster_name}"
-  retention_in_days = 2
+  retention_in_days = 1
   kms_key_id        = aws_kms_key.eks_secrets.arn
 
   tags = local.common_tags
