@@ -8,62 +8,81 @@ resource "aws_iam_role" "karpenter" {
 # O controller precisa consultar capacidade e criar/remover recursos EC2.
 #checkov:skip=CKV_AWS_290:Permissões de escrita são necessárias para o provisionamento de nós pelo Karpenter
 #checkov:skip=CKV_AWS_355:Ações Describe e Pricing da AWS não suportam escopo por ARN
+data "aws_partition" "current" {}
+
 resource "aws_iam_policy" "karpenter_controller" {
   name        = "${var.cluster_name}-karpenter-controller"
   description = "Permissões do controller Karpenter no cluster ${var.cluster_name}"
 
   policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [
       {
         Sid    = "AllowScopedEC2InstanceAccessActions"
         Effect = "Allow"
+
         Action = [
           "ec2:RunInstances",
           "ec2:CreateFleet"
         ]
+
         Resource = [
-          "arn:aws:ec2:${var.aws_region}::image/*",
-          "arn:aws:ec2:${var.aws_region}::snapshot/*",
-          "arn:aws:ec2:${var.aws_region}:*:security-group/*",
-          "arn:aws:ec2:${var.aws_region}:*:subnet/*",
-          "arn:aws:ec2:${var.aws_region}:*:capacity-reservation/*"
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}::image/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}::snapshot/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:security-group/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:subnet/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:capacity-reservation/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:placement-group/*"
         ]
       },
+
       {
         Sid    = "AllowScopedEC2LaunchTemplateAccessActions"
         Effect = "Allow"
+
         Action = [
           "ec2:RunInstances",
           "ec2:CreateFleet"
         ]
-        Resource = "arn:aws:ec2:${var.aws_region}:*:launch-template/*"
+
+        Resource = [
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:launch-template/*"
+        ]
+
         Condition = {
           StringEquals = {
             "aws:ResourceTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
           }
+
           StringLike = {
             "aws:ResourceTag/karpenter.sh/nodepool" = "*"
           }
         }
       },
+
       {
         Sid    = "AllowScopedEC2InstanceCreationActions"
         Effect = "Allow"
+
         Action = [
           "ec2:RunInstances",
           "ec2:CreateFleet"
         ]
+
         Resource = [
-          "arn:aws:ec2:${var.aws_region}:*:fleet/*",
-          "arn:aws:ec2:${var.aws_region}:*:instance/*",
-          "arn:aws:ec2:${var.aws_region}:*:volume/*",
-          "arn:aws:ec2:${var.aws_region}:*:network-interface/*"
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:fleet/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:instance/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:volume/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:network-interface/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:spot-instances-request/*"
         ]
+
         Condition = {
           StringEquals = {
             "aws:RequestTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
           }
+
           StringLike = {
             "aws:RequestTag/karpenter.sh/nodepool" = "*"
           }
@@ -73,11 +92,13 @@ resource "aws_iam_policy" "karpenter_controller" {
         Sid      = "AllowScopedEC2LaunchTemplateCreationActions"
         Effect   = "Allow"
         Action   = "ec2:CreateLaunchTemplate"
-        Resource = "arn:aws:ec2:${var.aws_region}:*:launch-template/*"
+        Resource = "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:launch-template/*"
+
         Condition = {
           StringEquals = {
             "aws:RequestTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
           }
+
           StringLike = {
             "aws:RequestTag/karpenter.sh/nodepool" = "*"
           }
@@ -87,79 +108,108 @@ resource "aws_iam_policy" "karpenter_controller" {
         Sid    = "AllowScopedEC2ResourceCreationTagging"
         Effect = "Allow"
         Action = "ec2:CreateTags"
+
         Resource = [
-          "arn:aws:ec2:${var.aws_region}:*:fleet/*",
-          "arn:aws:ec2:${var.aws_region}:*:instance/*",
-          "arn:aws:ec2:${var.aws_region}:*:volume/*",
-          "arn:aws:ec2:${var.aws_region}:*:network-interface/*",
-          "arn:aws:ec2:${var.aws_region}:*:launch-template/*"
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:fleet/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:instance/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:volume/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:network-interface/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:launch-template/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:spot-instances-request/*"
         ]
+
         Condition = {
           StringEquals = {
             "aws:RequestTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
+
+            "ec2:CreateAction" = [
+              "RunInstances",
+              "CreateFleet",
+              "CreateLaunchTemplate"
+            ]
           }
+
           StringLike = {
             "aws:RequestTag/karpenter.sh/nodepool" = "*"
           }
         }
       },
+
       {
         Sid      = "AllowScopedEC2ResourceTagging"
         Effect   = "Allow"
         Action   = "ec2:CreateTags"
-        Resource = "arn:aws:ec2:${var.aws_region}:*:instance/*"
+        Resource = "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:instance/*"
+
         Condition = {
           StringEquals = {
             "aws:ResourceTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
           }
+
           StringLike = {
             "aws:ResourceTag/karpenter.sh/nodepool" = "*"
           }
         }
       },
+
       {
         Sid    = "AllowScopedEC2InstanceActions"
         Effect = "Allow"
-        Action = ["ec2:TerminateInstances", "ec2:DeleteLaunchTemplate"]
-        Resource = [
-          "arn:aws:ec2:${var.aws_region}:*:instance/*",
-          "arn:aws:ec2:${var.aws_region}:*:launch-template/*"
+
+        Action = [
+          "ec2:TerminateInstances",
+          "ec2:DeleteLaunchTemplate"
         ]
+
+        Resource = [
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:instance/*",
+          "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:*:launch-template/*"
+        ]
+
         Condition = {
           StringEquals = {
             "aws:ResourceTag/kubernetes.io/cluster/${var.cluster_name}" = "owned"
           }
+
           StringLike = {
             "aws:ResourceTag/karpenter.sh/nodepool" = "*"
           }
         }
       },
+
       {
         Sid    = "AllowRegionalReadActions"
         Effect = "Allow"
+
         Action = [
           "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeCapacityReservations",
           "ec2:DescribeImages",
           "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
           "ec2:DescribeInstanceTypeOfferings",
           "ec2:DescribeInstanceTypes",
           "ec2:DescribeLaunchTemplates",
+          "ec2:DescribePlacementGroups",
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeSpotPriceHistory",
           "ec2:DescribeSubnets"
         ]
+
         Resource = "*"
+
         Condition = {
           StringEquals = {
             "aws:RequestedRegion" = var.aws_region
           }
         }
       },
+
       {
         Sid      = "AllowSSMReadActions"
         Effect   = "Allow"
         Action   = "ssm:GetParameter"
-        Resource = "arn:aws:ssm:${var.aws_region}::parameter/aws/service/*"
+        Resource = "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}::parameter/aws/service/*"
       },
       {
         Sid      = "AllowPricingReadActions"
@@ -167,23 +217,37 @@ resource "aws_iam_policy" "karpenter_controller" {
         Action   = "pricing:GetProducts"
         Resource = "*"
       },
+
+      {
+        Sid      = "AllowUnscopedInstanceProfileListAction"
+        Effect   = "Allow"
+        Action   = "iam:ListInstanceProfiles"
+        Resource = "*"
+      },
+
       {
         Sid      = "AllowPassingInstanceRole"
         Effect   = "Allow"
         Action   = "iam:PassRole"
         Resource = aws_iam_role.karpenter_nodes.arn
+
         Condition = {
           StringEquals = {
-            "iam:PassedToService" = ["ec2.amazonaws.com", "ec2.amazonaws.com.cn"]
+            "iam:PassedToService" = [
+              "ec2.amazonaws.com",
+              "ec2.amazonaws.com.cn"
+            ]
           }
         }
       },
+
       {
         Sid      = "AllowInstanceProfileReadActions"
         Effect   = "Allow"
         Action   = "iam:GetInstanceProfile"
         Resource = aws_iam_instance_profile.karpenter_nodes.arn
       },
+
       {
         Sid      = "AllowEKSClusterReadActions"
         Effect   = "Allow"
