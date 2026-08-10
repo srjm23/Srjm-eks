@@ -89,3 +89,8 @@ variable "name_s3_backend" {
   type    = string
   default = "eks-sjrm-tfstate"
 }
+
+variable "account_id" {
+  type    = string
+  default = "166611709615"
+}
