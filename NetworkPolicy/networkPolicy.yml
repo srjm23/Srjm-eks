@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-qrcode
+  namespace: qrcode-system
+
+spec:
+  podSelector:
+    matchLabels:
+      app: srjm
+
+  policyTypes:
+    - Ingress
+
+  ingress:
+    - from:
+        - podSelector: {}
+
+        - namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - kube-system
+                  - nginx-gateway
+
+      ports:
+        - protocol: TCP
+          port: 3000
