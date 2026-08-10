@@ -1,0 +1,239 @@
+# values.yml
+
+global:
+  enabled: true
+
+  # O HTTPS será terminado no NGINX Gateway.
+  # Gateway -> Vault será HTTP pela porta 8200.
+  tlsDisable: true
+
+
+# =========================================================
+# Vault Agent Injector
+# =========================================================
+injector:
+  enabled: true
+
+  replicas: 1
+
+  metrics:
+    enabled: false
+
+  webhook:
+    failurePolicy: Ignore
+    timeoutSeconds: 30
+
+  # Vault K8s gerencia automaticamente o certificado
+  # do MutatingWebhook.
+  certs:
+    secretName: null
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+
+# =========================================================
+# Vault Server
+# =========================================================
+server:
+  enabled: true
+
+  # -------------------------------------------------------
+  # Recursos
+  # -------------------------------------------------------
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+
+  # -------------------------------------------------------
+  # Service
+  # -------------------------------------------------------
+  service:
+    enabled: true
+
+    # Standalone não precisa dos Services específicos
+    # vault-active / vault-standby.
+    active:
+      enabled: false
+
+    standby:
+      enabled: false
+
+    # Permite que o Service tenha endpoint mesmo antes
+    # do Vault ficar Ready/unsealed.
+    publishNotReadyAddresses: true
+
+    port: 8200
+    targetPort: 8200
+
+    annotations: {}
+
+
+  # -------------------------------------------------------
+  # Persistent Volume
+  # -------------------------------------------------------
+  dataStorage:
+    enabled: true
+
+    size: 10Gi
+
+    mountPath: "/vault/data"
+
+    # StorageClass existente no seu EKS
+    storageClass: gp2
+
+    accessMode: ReadWriteOnce
+
+    annotations: {}
+
+    labels: {}
+
+
+  # -------------------------------------------------------
+  # Audit Storage
+  # -------------------------------------------------------
+  auditStorage:
+    enabled: false
+
+
+  # -------------------------------------------------------
+  # Standalone
+  # -------------------------------------------------------
+  standalone:
+    enabled: true
+
+    config: |-
+      ui = true
+
+      listener "tcp" {
+        address         = "[::]:8200"
+        cluster_address = "[::]:8201"
+
+        # TLS termina no NGINX Gateway.
+        tls_disable = 1
+      }
+
+      storage "file" {
+        path = "/vault/data"
+      }
+
+
+  # -------------------------------------------------------
+  # HA
+  # -------------------------------------------------------
+  ha:
+    enabled: false
+
+
+  # -------------------------------------------------------
+  # DEV MODE
+  # -------------------------------------------------------
+  dev:
+    enabled: false
+
+
+  # -------------------------------------------------------
+  # Kubernetes Auth
+  # -------------------------------------------------------
+  authDelegator:
+    enabled: true
+
+
+  # -------------------------------------------------------
+  # Service Account
+  # -------------------------------------------------------
+  serviceAccount:
+    create: true
+    createSecret: false
+    name: ""
+
+    # Não estamos usando:
+    #
+    # service_registration "kubernetes" {}
+    #
+    # Portanto esse RBAC não é necessário.
+    serviceDiscovery:
+      enabled: false
+
+
+  # -------------------------------------------------------
+  # Scheduling
+  # -------------------------------------------------------
+  nodeSelector: {}
+
+  tolerations: []
+
+  # Como temos apenas vault-0, não precisamos
+  # de anti-affinity.
+  affinity: ""
+
+
+  # -------------------------------------------------------
+  # Readiness Probe
+  # -------------------------------------------------------
+  readinessProbe:
+    enabled: true
+    port: 8200
+    failureThreshold: 2
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 3
+
+
+  # -------------------------------------------------------
+  # Liveness Probe
+  # -------------------------------------------------------
+  # Deixar desabilitada durante o laboratório/inicialização.
+  livenessProbe:
+    enabled: false
+
+
+  # -------------------------------------------------------
+  # Ingress
+  # -------------------------------------------------------
+  # Estamos usando Gateway API.
+  ingress:
+    enabled: false
+
+
+  # -------------------------------------------------------
+  # HTTPRoute
+  # -------------------------------------------------------
+  # Seu HTTPRoute será gerenciado separadamente.
+  httproute:
+    enabled: false
+
+
+# =========================================================
+# Vault UI Service
+# =========================================================
+#
+# Isso NÃO desabilita a UI do Vault.
+#
+# A UI está habilitada dentro do HCL:
+#
+# ui = true
+#
+# Aqui apenas evitamos criar um Service Kubernetes separado
+# chamado vault-ui.
+#
+ui:
+  enabled: false
+
+
+# =========================================================
+# Secrets Store CSI Provider
+# =========================================================
+csi:
+  enabled: false
