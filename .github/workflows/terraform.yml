@@ -63,13 +63,8 @@ jobs:
       - name: Validar Terraform
         run: terraform validate
 
-      - name: Gerar plano de aplicação
-        if: github.event.inputs.action == 'apply'
+      - name: Executar Terraform Plan
         run: terraform plan -input=false -out=tfplan
-
-      - name: Gerar plano de destruição
-        if: github.event.inputs.action == 'destroy'
-        run: terraform plan -destroy -input=false -out=tfplan
 
       - name: Salvar plano
         uses: actions/upload-artifact@v7
@@ -109,13 +104,18 @@ jobs:
       - name: Inicializar Terraform com backend S3
         run: terraform init -input=false
 
-      - name: Exibir plano aprovado
+      - name: Exibir plano de aplicação
+        if: github.event.inputs.action == 'apply'
         run: terraform show -no-color tfplan
 
       - name: Aplicar infraestrutura
         if: github.event.inputs.action == 'apply'
         run: terraform apply -input=false -auto-approve tfplan
 
+      - name: Gerar plano de destruição
+        if: github.event.inputs.action == 'destroy'
+        run: terraform plan -destroy -input=false -out=destroy.tfplan
+
       - name: Destruir infraestrutura
         if: github.event.inputs.action == 'destroy'
-        run: terraform apply -input=false -auto-approve tfplan
+        run: terraform apply -input=false -auto-approve destroy.tfplan
