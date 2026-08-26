@@ -21,12 +21,12 @@ spec:
 
         - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["t3.small"]
-          
+          values: ["t3.small", "t3.medium"]
+
         - key: "topology.kubernetes.io/zone"
           operator: In
           values: ["us-east-2a", "us-east-2b"]
 
   limits:
-    cpu: "10"
-    memory: 16Gi
+    cpu: "14"
+    memory: 24Gi

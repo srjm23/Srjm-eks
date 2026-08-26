@@ -133,9 +133,7 @@ resource "aws_nat_gateway" "eks" {
   subnet_id = aws_subnet.public_a.id
 
   depends_on = [
-
-    aws_internet_gateway.eks
-
+    aws_internet_gateway.eks,
   ]
 
   tags = {

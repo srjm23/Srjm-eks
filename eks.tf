@@ -48,7 +48,11 @@ resource "aws_eks_cluster" "srjm-eks" {
   depends_on = [
 
     aws_iam_role_policy_attachment.cluster_policy,
-    aws_kms_key_policy.eks_secrets
+    aws_kms_key_policy.eks_secrets,
+    aws_route_table_association.public_a,
+    aws_route_table_association.public_b,
+    aws_route_table_association.private_a,
+    aws_route_table_association.private_b,
 
   ]
 

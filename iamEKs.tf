@@ -1,5 +1,6 @@
 resource "aws_iam_user" "developer" {
-  name = "jm-dev"
+  name          = "jm-dev"
+  force_destroy = true
 }
 
 resource "aws_eks_access_entry" "developer" {
